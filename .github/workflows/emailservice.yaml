@@ -6,7 +6,7 @@ on:
       - main
       - develop
     paths:
-      - 'src/emailservice/**'
+      - 'src/**'
       - '.github/workflows/emailservice.yaml'
       - '.github/workflows/template.yaml'
   pull_request:
@@ -14,7 +14,7 @@ on:
       - main
       - develop
     paths:
-      - 'src/emailservice/**'
+      - 'src/**'
       - '.github/workflows/emailservice.yaml'
       - '.github/workflows/template.yaml'
 
@@ -24,11 +24,11 @@ permissions:
 
 jobs:
   call-template:
-    uses: ./.github/workflows/template.yaml
+    uses: HipsterShopp/hipstershop-shared-workflows/.github/workflows/template.yaml@main
     with:
       github_event_name: ${{ github.event_name }}
       service_name: emailservice
-      service_path: src/emailservice
+      service_path: src/
       runtime: python
       python-version: "3.11"
     secrets:
