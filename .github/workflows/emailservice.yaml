@@ -47,7 +47,7 @@ jobs:
       service_name: emailservice
       service_path: src/
       runtime: python
-      python-version: "3.11"
+      # python-version: "3.11"
       sonarqube_result: ${{ needs.validation.outputs.sonarqube_result }}
       snyk_result: ${{ needs.validation.outputs.snyk_result }}
     secrets:
