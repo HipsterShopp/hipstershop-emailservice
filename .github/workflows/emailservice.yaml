@@ -26,7 +26,7 @@ permissions:
 
 jobs:
   validation:
-    uses: HipsterShopp/hipstershop-shared-workflows/.github/workflows/validation.yaml@main
+    uses: HipsterShopp/hipstershop-shared-workflows/.github/workflows/validation.yaml@feature/decouple-workflow
     with:
       github_event_name: ${{ github.event_name }}
       service_name: emailservice
