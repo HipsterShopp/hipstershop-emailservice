@@ -9,7 +9,7 @@ on:
       - 'src/**'
       - '.github/workflows/emailservice.yaml'
       # - 'HipsterShopp/hipstershop-shared-workflows/.github/workflows/validation.yaml@main'
-      - 'HipsterShopp/hipstershop-shared-workflows/.github/workflows/build.yaml@main'
+      - 'HipsterShopp/hipstershop-shared-workflows/.github/workflows/build.yaml@feature/decouple-workflow'
   pull_request:
     branches:
       - main
@@ -17,8 +17,8 @@ on:
     paths:
       - 'src/**'
       - '.github/workflows/emailservice.yaml'
-      - 'HipsterShopp/hipstershop-shared-workflows/.github/workflows/validation.yaml@main'
-      - 'HipsterShopp/hipstershop-shared-workflows/.github/workflows/build.yaml@main
+      - 'HipsterShopp/hipstershop-shared-workflows/.github/workflows/validation.yaml@feature/decouple-workflow'
+      - 'HipsterShopp/hipstershop-shared-workflows/.github/workflows/build.yaml@feature/decouple-workflow'
 
 permissions:
   contents: write
@@ -39,7 +39,7 @@ jobs:
       SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
   build:
-    uses: HipsterShopp/hipstershop-shared-workflows/.github/workflows/build.yaml@main
+    uses: HipsterShopp/hipstershop-shared-workflows/.github/workflows/build.yaml@feature/decouple-workflow
     needs: validation
     if: always() && needs.validation.result == 'success'
     with:
@@ -55,7 +55,7 @@ jobs:
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
   notify:
-    uses: HipsterShopp/hipstershop-shared-workflows/.github/workflows/notify.yaml@main
+    uses: HipsterShopp/hipstershop-shared-workflows/.github/workflows/notify.yaml@feature/decouple-workflow
     needs: [validation, build]
     if: |
       always() && (
