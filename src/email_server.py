@@ -103,6 +103,50 @@ def send_email_via_smtp(to_address: str, subject: str, html_body: str) -> bool:
     return False
 
 
+def normalise_order(raw: dict) -> dict:
+    """Convert the camelCase API order dict to the snake_case shape
+    expected by the Jinja2 confirmation.html template.
+    Fills safe defaults for every field so the template never raises
+    an UndefinedError regardless of how sparse the payload is.
+    """
+    raw_cost    = raw.get('shippingCost', {})
+    raw_addr    = raw.get('shippingAddress', {})
+    raw_items   = raw.get('items', [])
+
+    def normalise_item(it: dict) -> dict:
+        inner = it.get('item', {})
+        cost  = it.get('cost', {})
+        return {
+            'item': {
+                'product_id': inner.get('productId', inner.get('product_id', 'N/A')),
+                'quantity':   inner.get('quantity', ''),
+            },
+            'cost': {
+                'units':         cost.get('units', 0),
+                'nanos':         cost.get('nanos', 0),
+                'currency_code': cost.get('currencyCode', cost.get('currency_code', '')),
+            },
+        }
+
+    return {
+        'order_id':            raw.get('orderId',            raw.get('order_id', '')),
+        'shipping_tracking_id': raw.get('shippingTrackingId', raw.get('shipping_tracking_id', '')),
+        'shipping_cost': {
+            'units':         raw_cost.get('units', 0),
+            'nanos':         raw_cost.get('nanos', 0),
+            'currency_code': raw_cost.get('currencyCode', raw_cost.get('currency_code', '')),
+        } if raw_cost else {},
+        'shipping_address': {
+            'street_address_1': raw_addr.get('streetAddress1', raw_addr.get('street_address_1', '')),
+            'street_address_2': raw_addr.get('streetAddress2', raw_addr.get('street_address_2', '')),
+            'city':             raw_addr.get('city', ''),
+            'country':          raw_addr.get('country', ''),
+            'zip_code':         raw_addr.get('zipCode', raw_addr.get('zip_code', '')),
+        } if raw_addr else {},
+        'items': [normalise_item(i) for i in raw_items],
+    }
+
+
 app = Flask(__name__)
 
 
@@ -134,9 +178,12 @@ def send_order_confirmation():
         except Exception as exc:
             logger.warning(f'Failed to persist email event: {exc}')
 
+    # ── Normalise order dict to snake_case for the template ─────────────────
+    order_ctx = normalise_order(order)
+
     # ── Render HTML template ──────────────────────────────────────────────────
     try:
-        html_body = template.render(order=order)
+        html_body = template.render(order=order_ctx)
     except TemplateError as exc:
         logger.error(f'Template rendering failed: {exc}')
         return jsonify({'error': 'template_error', 'details': str(exc)}), 500

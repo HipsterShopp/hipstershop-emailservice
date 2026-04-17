@@ -29,25 +29,40 @@
     <h2>Your Order Confirmation</h2>
     <p>Thanks for shopping with us!<p>
     <h3>Order ID</h3>
-    <p>#{{ order.order_id }}</p>
+    <p>#{{ order.order_id | default('N/A') }}</p>
     <h3>Shipping</h3>
-    <p>#{{ order.shipping_tracking_id }}</p>
-    <p>{{ order.shipping_cost.units }}. {{ "%02d" | format(order.shipping_cost.nanos // 10000000) }} {{ order.shipping_cost.currency_code }}</p>
-    <p>{{ order.shipping_address.street_address_1 }}, {{order.shipping_address.street_address_2}}, {{order.shipping_address.city}}, {{order.shipping_address.country}} {{order.shipping_address.zip_code}}</p>
+    <p>Tracking: #{{ order.shipping_tracking_id | default('N/A') }}</p>
+    {% set sc = order.shipping_cost | default({}) %}
+    {% if sc %}
+    <p>{{ sc.units | default('0') }}.{{ "%02d" | format((sc.nanos | default(0)) // 10000000) }} {{ sc.currency_code | default('') }}</p>
+    {% endif %}
+    {% set sa = order.shipping_address | default({}) %}
+    {% if sa %}
+    <p>
+      {{ sa.street_address_1 | default('') }}{% if sa.street_address_2 | default('') %}, {{ sa.street_address_2 }}{% endif %}{% if sa.city | default('') %}, {{ sa.city }}{% endif %}{% if sa.country | default('') %}, {{ sa.country }}{% endif %}{% if sa.zip_code | default('') %} {{ sa.zip_code }}{% endif %}
+    </p>
+    {% endif %}
     <h3>Items</h3>
+    {% set items = order.items | default([]) %}
+    {% if items %}
     <table style="width:100%">
         <tr>
           <th>Item No.</th>
-          <th>Quantity</th> 
+          <th>Quantity</th>
           <th>Price</th>
         </tr>
-        {% for item in order.items %}
+        {% for item in items %}
+        {% set it = item.item | default({}) %}
+        {% set cost = item.cost | default({}) %}
         <tr>
-          <td>#{{ item.item.product_id }}</td>
-          <td>{{ item.item.quantity }}</td> 
-          <td>{{ item.cost.units }}.{{ "%02d" | format(item.cost.nanos // 10000000) }} {{ item.cost.currency_code }}</td>
+          <td>#{{ it.product_id | default('N/A') }}</td>
+          <td>{{ it.quantity | default('') }}</td>
+          <td>{{ cost.units | default('0') }}.{{ "%02d" | format((cost.nanos | default(0)) // 10000000) }} {{ cost.currency_code | default('') }}</td>
         </tr>
         {% endfor %}
     </table>
+    {% else %}
+    <p><em>No items listed.</em></p>
+    {% endif %}
   </body>
 </html>
