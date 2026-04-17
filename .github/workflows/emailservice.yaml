@@ -25,7 +25,7 @@ jobs:
     with:
       service_name: emailservice
       service_path: src/
-      runtime: python          # node | java | go | python | dotnet
+      runtime: python        
     secrets:
       SNYK_TOKEN:      ${{ secrets.SNYK_TOKEN }}
       SONAR_TOKEN:     ${{ secrets.SONAR_TOKEN }}
@@ -62,10 +62,6 @@ jobs:
     secrets:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN:    ${{ secrets.DOCKERHUB_TOKEN }}
- 
-  # NOTE: No update-helm-values step here.
-  # ArgoCD Image Updater polls DockerHub, detects the new tag,
-  # and commits the tag update to hipstershop-helm-charts automatically.
  
   notify:
     needs: [sonar-and-snyk, generate-tag-and-build-image, push]
