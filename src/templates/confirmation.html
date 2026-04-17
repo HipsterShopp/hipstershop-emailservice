@@ -32,18 +32,18 @@
     <p>#{{ order.order_id | default('N/A') }}</p>
     <h3>Shipping</h3>
     <p>Tracking: #{{ order.shipping_tracking_id | default('N/A') }}</p>
-    {% set sc = order.shipping_cost | default({}) %}
+    {% set sc = order['shipping_cost'] | default({}) %}
     {% if sc %}
     <p>{{ sc.units | default('0') }}.{{ "%02d" | format((sc.nanos | default(0)) // 10000000) }} {{ sc.currency_code | default('') }}</p>
     {% endif %}
-    {% set sa = order.shipping_address | default({}) %}
+    {% set sa = order['shipping_address'] | default({}) %}
     {% if sa %}
     <p>
       {{ sa.street_address_1 | default('') }}{% if sa.street_address_2 | default('') %}, {{ sa.street_address_2 }}{% endif %}{% if sa.city | default('') %}, {{ sa.city }}{% endif %}{% if sa.country | default('') %}, {{ sa.country }}{% endif %}{% if sa.zip_code | default('') %} {{ sa.zip_code }}{% endif %}
     </p>
     {% endif %}
     <h3>Items</h3>
-    {% set items = order.items | default([]) %}
+    {% set items = order['items'] | default([]) %}
     {% if items %}
     <table style="width:100%">
         <tr>
