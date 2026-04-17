@@ -1,78 +1,84 @@
 name: emailservice CI
-
+ 
+run-name: "emailservice — ${{ github.event.head_commit.message || github.event.pull_request.title }} (${{ github.sha }})"
+ 
 on:
   push:
-    branches:
-      - main
-      - develop
+    branches: [main, develop]
     paths:
       - 'src/**'
       - '.github/workflows/emailservice.yaml'
-      # - 'HipsterShopp/hipstershop-shared-workflows/.github/workflows/validation.yaml@main'
-      - 'HipsterShopp/hipstershop-shared-workflows/.github/workflows/build.yaml@feature/decouple-workflow'
   pull_request:
-    branches:
-      - main
-      - develop
+    branches: [main, develop]
     paths:
       - 'src/**'
       - '.github/workflows/emailservice.yaml'
-      - 'HipsterShopp/hipstershop-shared-workflows/.github/workflows/validation.yaml@feature/decouple-workflow'
-      - 'HipsterShopp/hipstershop-shared-workflows/.github/workflows/build.yaml@feature/decouple-workflow'
-
+ 
 permissions:
   contents: write
-
-
+ 
 jobs:
-  validation:
-    uses: HipsterShopp/hipstershop-shared-workflows/.github/workflows/validation.yaml@feature/decouple-workflow
+ 
+  sonar-and-snyk:
+    if: github.event_name == 'pull_request'
+    uses: HipsterShopp/hipstershop-shared-workflows/.github/workflows/sonar-and-snyk.yaml@main
     with:
-      github_event_name: ${{ github.event_name }}
       service_name: emailservice
       service_path: src/
-      runtime: python
-      python-version: "3.11"
+      runtime: python          # node | java | go | python | dotnet
     secrets:
-      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-
-  build:
-    uses: HipsterShopp/hipstershop-shared-workflows/.github/workflows/build.yaml@feature/decouple-workflow
-    needs: validation
-    if: always() && needs.validation.result == 'success'
+      SNYK_TOKEN:      ${{ secrets.SNYK_TOKEN }}
+      SONAR_TOKEN:     ${{ secrets.SONAR_TOKEN }}
+      SONAR_HOST_URL:  ${{ secrets.SONAR_HOST_URL }}
+ 
+  generate-tag-and-build-image:
+    needs: [sonar-and-snyk]
+    if: |
+      always() &&
+      (
+        (github.event_name == 'pull_request' && needs.sonar-and-snyk.result == 'success') ||
+        github.event_name == 'push'
+      )
+    uses: HipsterShopp/hipstershop-shared-workflows/.github/workflows/generate-tag-and-build-image-trivy.yaml@main
     with:
-      github_event_name: ${{ github.event_name }}
       service_name: emailservice
       service_path: src/
-      runtime: python
-      # python-version: "3.11"
-      sonarqube_result: ${{ needs.validation.outputs.sonarqube_result }}
-      snyk_result: ${{ needs.validation.outputs.snyk_result }}
+      run_trivy: ${{ github.event_name == 'pull_request' }}
     secrets:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-
-  notify:
-    uses: HipsterShopp/hipstershop-shared-workflows/.github/workflows/notify.yaml@feature/decouple-workflow
-    needs: [validation, build]
+      DOCKERHUB_TOKEN:    ${{ secrets.DOCKERHUB_TOKEN }}
+ 
+  push:
+    needs: [generate-tag-and-build-image]
     if: |
-      always() && (
-        needs.validation.result == 'failure' ||
-        needs.build.result == 'failure'
-      )
+      always() &&
+      github.event_name == 'push' &&
+      needs.generate-tag-and-build-image.result == 'success'
+    uses: HipsterShopp/hipstershop-shared-workflows/.github/workflows/push.yaml@main
     with:
-      github_event_name: ${{ github.event_name }}
       service_name: emailservice
-      service_path: src/
-      runtime: python
-      sonarqube_result: ${{ needs.validation.outputs.sonarqube_result }}
-      snyk_result: ${{ needs.validation.outputs.snyk_result }}
-      generate_tag_result: ${{ needs.build.outputs.generate_tag_result }}
-      build_image_result: ${{ needs.build.outputs.build_image_result }}
-      trivy_result: ${{ needs.build.outputs.trivy_result }}
-      push_result: ${{ needs.build.outputs.push_result }}
-      tag: ${{ needs.build.outputs.tag }}
+      git_tag:     ${{ needs.generate-tag-and-build-image.outputs.tag }}
+      tag_exists:  ${{ needs.generate-tag-and-build-image.outputs.tag_exists }}
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN:    ${{ secrets.DOCKERHUB_TOKEN }}
+ 
+  # NOTE: No update-helm-values step here.
+  # ArgoCD Image Updater polls DockerHub, detects the new tag,
+  # and commits the tag update to hipstershop-helm-charts automatically.
+ 
+  notify:
+    needs: [sonar-and-snyk, generate-tag-and-build-image, push]
+    if: always()
+    uses: HipsterShopp/hipstershop-shared-workflows/.github/workflows/notify.yaml@main
+    with:
+      service_name:        emailservice
+      git_tag:             ${{ needs.generate-tag-and-build-image.outputs.tag || 'N/A' }}
+      sonarqube_result:    ${{ needs.sonar-and-snyk.outputs.sonarqube_result || 'skipped' }}
+      snyk_result:         ${{ needs.sonar-and-snyk.outputs.snyk_result || 'skipped' }}
+      generate_tag_result: ${{ needs.generate-tag-and-build-image.result || 'skipped' }}
+      build_result:        ${{ needs.generate-tag-and-build-image.outputs.build_result || 'skipped' }}
+      trivy_result:        ${{ needs.generate-tag-and-build-image.outputs.trivy_result || 'skipped' }}
+      push_result:         ${{ needs.push.outputs.push_result || 'skipped' }}
     secrets:
       SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
