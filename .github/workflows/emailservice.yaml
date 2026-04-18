@@ -62,9 +62,25 @@ jobs:
     secrets:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN:    ${{ secrets.DOCKERHUB_TOKEN }}
+
+  update-helm-values:
+    needs: [push, generate-tag-and-build-image]
+    if: |
+      always() &&
+      github.event_name != 'pull_request' &&
+      github.ref_name == 'develop' &&
+      needs.push.result == 'success'
+    uses: HipsterShopp/hipstershop-shared-workflows/.github/workflows/helm-updater-job.yaml@feature/loose-coupling
+    with:
+      service_name: emailservice
+      image_tag: ${{ needs.generate-tag-and-build-image.outputs.tag }}
+      helm_values_path: "hipstershop-micro-apps/emailservice/values.dev.yaml"
+      target_branch: "develop"
+    secrets:
+      HELM_CHARTS_TOKEN: ${{ secrets.HELM_CHARTS_TOKEN }}
  
   notify:
-    needs: [sonar-and-snyk, generate-tag-and-build-image, push]
+    needs: [sonar-and-snyk, generate-tag-and-build-image, push, update-helm-values]
     if: always()
     uses: HipsterShopp/hipstershop-shared-workflows/.github/workflows/notify.yaml@main
     with:
