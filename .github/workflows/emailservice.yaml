@@ -31,9 +31,7 @@ jobs:
     with:
       service_name: emailservice
       service_path: src/
-      runtime: java
-      java-version: "21"
-      java-build-tool: "gradle"
+      runtime: python
     secrets:
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -72,7 +70,6 @@ jobs:
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
 
-  # update helm values for dev
   update-helm-values-dev:
     needs: [push, generate-tag-and-build-image]
     if: |
@@ -90,11 +87,6 @@ jobs:
       HELM_CHARTS_TOKEN: ${{ secrets.HELM_CHARTS_TOKEN }}
 
 
-  # update helm values for prod (requires manual approval via GitHub Environment)
-  # GitHub does NOT allow environment: + uses: in the same job.
-  # So we use a two-step pattern:
-  #   1. prod-approval-gate  — a regular job with environment: production (this is what triggers the pause)
-  #   2. update-helm-values-prod — runs after the gate is approved
   prod-approval-gate:
     needs: [push, generate-tag-and-build-image]
     if: |
